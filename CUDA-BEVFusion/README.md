@@ -139,6 +139,119 @@ bash src/onnx/make_pb.sh
 bash tool/run.sh
 ```
 
+### 使用 nuScenes Mini 多帧数据运行 CUDA-BEVFusion
+
+#### 1. 数据集放置
+
+将解压后的 nuScenes mini 数据集放到 `CUDA-BEVFusion` 目录下：
+
+```bash
+CUDA-BEVFusion/
+└── nuscenesmini/
+    ├── maps
+    ├── samples
+    ├── sweeps
+    └── v1.0-mini
+```
+
+#### 2. 数据集查看
+
+在 CUDA-BEVFusion 根目录运行：
+
+```BASH
+python - <<'PY'
+from nuscenes.nuscenes import NuScenes
+
+nusc = NuScenes(
+    version='v1.0-mini',
+    dataroot='./nuscenesmini',
+    verbose=False
+)
+
+print('Scenes:', len(nusc.scene))
+print('Samples:', len(nusc.sample))
+
+for i, scene in enumerate(nusc.scene):
+    print(
+        i,
+        scene['name'],
+        'samples:',
+        scene['nbr_samples'],
+        '|',
+        scene['description']
+    )
+PY
+```
+
+#### 3. 转换数据格式
+
+CUDA-BEVFusion 不直接读取 nuScenes 原始目录，需要先转换成与 example-data 相同的输入格式。
+
+执行转换：
+
+``` BASH
+python tool/tools_convert_nuscenes_mini.py \
+  --dataroot ./nuscenesmini \
+  --version v1.0-mini \
+  --out nuscenes-mini-frames \
+  --max-samples 20 \
+  --scene-index 0
+```
+
+若要转换mini数据集全部关键帧：
+
+``` BASH
+for i in $(seq 0 9); do
+    echo "Converting scene $i"
+
+    python tool/tools_convert_nuscenes_mini.py \
+      --dataroot ./nuscenesmini \
+      --version v1.0-mini \
+      --out nuscenes-mini-frames/scene-$i \
+      --max-samples 999 \
+      --scene-index $i
+done
+```
+
+#### 4. 运行
+
+也可以通过修改 tool/environment.sh中的参数
+
+``` SH
+# 单帧运行：
+
+export DEBUG_MODEL=resnet50int8
+export DEBUG_PRECISION=int8
+export DEBUG_DATA=nuscenes-mini-frames/frame_000000
+export DEBUG_OUTPUT_DIR=nuscenes-mini-output-single
+bash tool/run.sh
+```
+
+```BASH
+# 多帧运行：
+
+export DEBUG_MODEL=resnet50int8
+export DEBUG_PRECISION=int8
+export DEBUG_DATA=nuscenes-mini-frames
+export DEBUG_OUTPUT_DIR=nuscenes-mini-outputs-maincpp
+bash tool/run.sh
+```
+
+```BASH
+# 批量运行：
+
+for i in $(seq 0 9); do
+    echo "Processing scene $i"
+    export DEBUG_MODEL=resnet50int8
+    export DEBUG_PRECISION=int8
+    export DEBUG_DATA=nuscenes-mini-frames/scene-$i
+    export DEBUG_OUTPUT_DIR=nuscenes-mini-outputs/scene-$i
+
+    bash tool/run.sh
+
+done
+```
+
 ## Export onnx and PTQ
 - For more detail, please refer [here](qat/README.md)
 
@@ -167,3 +280,5 @@ git checkout db75150717a9462cb60241e36ba28d65f6908607
 ## References
 - [BEVFusion: Multi-Task Multi-Sensor Fusion with Unified Bird's-Eye View Representation](https://arxiv.org/abs/2205.13542)
 - [BEVFusion Repository](https://github.com/mit-han-lab/bevfusion)
+
+
