@@ -38,6 +38,14 @@
 #include "common/timer.hpp"
 #include "common/visualize.hpp"
 
+#include <filesystem>
+#include <algorithm>
+#include <memory>
+#include <cstdlib>
+
+
+
+
 static std::vector<unsigned char*> load_images(const std::string& root) {
   const char* file_names[] = {"0-FRONT.jpg", "1-FRONT_RIGHT.jpg", "2-FRONT_LEFT.jpg",
                               "3-BACK.jpg",  "4-BACK_LEFT.jpg",   "5-BACK_RIGHT.jpg"};
@@ -59,6 +67,56 @@ static void free_images(std::vector<unsigned char*>& images) {
 
   images.clear();
 }
+
+// 添加一个判断 frame 目录的函数
+
+static bool is_frame_root(const std::string& root) {
+  namespace fs = std::filesystem;
+
+  if (!fs::exists(root) || !fs::is_directory(root))
+    return false;
+
+  for (auto& p : fs::directory_iterator(root)) {
+    if (!p.is_directory())
+      continue;
+
+    auto name = p.path().filename().string();
+    if (name.rfind("frame_", 0) == 0)
+      return true;
+  }
+
+  return false;
+}
+
+static std::vector<std::string> collect_frame_dirs(const std::string& root) {
+  namespace fs = std::filesystem;
+
+  std::vector<std::string> frames;
+
+  if (is_frame_root(root)) {
+    for (auto& p : fs::directory_iterator(root)) {
+      if (!p.is_directory())
+        continue;
+
+      auto name = p.path().filename().string();
+      if (name.rfind("frame_", 0) == 0)
+        frames.push_back(p.path().string());
+    }
+
+    std::sort(frames.begin(), frames.end());
+  } else {
+    frames.push_back(root);
+  }
+
+  return frames;
+}
+
+static std::string basename_of_path(const std::string& path) {
+  namespace fs = std::filesystem;
+  return fs::path(path).filename().string();
+}
+
+// 结束
 
 static void visualize(const std::vector<bevfusion::head::transbbox::BoundingBox>& bboxes, const nv::Tensor& lidar_points,
                       const std::vector<unsigned char*> images, const nv::Tensor& lidar2image, const std::string& save_path,
@@ -220,14 +278,22 @@ std::shared_ptr<bevfusion::Core> create_core(const std::string& model, const std
 }
 
 int main(int argc, char** argv) {
-
-  const char* data      = "example-data";
-  const char* model     = "resnet50int8";
+  const char* data = "example-data";
+  const char* model = "resnet50int8";
   const char* precision = "int8";
+  const char* output_dir = std::getenv("DEBUG_OUTPUT_DIR");
+  
+  if (output_dir == nullptr) output_dir = "build";
 
-  if (argc > 1) data      = argv[1];
-  if (argc > 2) model     = argv[2];
+
+  if (argc > 1) data = argv[1];
+  if (argc > 2) model = argv[2];
   if (argc > 3) precision = argv[3];
+  if (argc > 4) output_dir = argv[4];
+
+  namespace fs = std::filesystem;
+  fs::create_directories(output_dir);
+
   dlopen("libcustom_layernorm.so", RTLD_NOW);
 
   auto core = create_core(model, precision);
@@ -238,39 +304,71 @@ int main(int argc, char** argv) {
 
   cudaStream_t stream;
   cudaStreamCreate(&stream);
- 
+
   core->print();
   core->set_timer(true);
 
-  // Load matrix to host
-  auto camera2lidar = nv::Tensor::load(nv::format("%s/camera2lidar.tensor", data), false);
-  auto camera_intrinsics = nv::Tensor::load(nv::format("%s/camera_intrinsics.tensor", data), false);
-  auto lidar2image = nv::Tensor::load(nv::format("%s/lidar2image.tensor", data), false);
-  auto img_aug_matrix = nv::Tensor::load(nv::format("%s/img_aug_matrix.tensor", data), false);
-  core->update(camera2lidar.ptr<float>(), camera_intrinsics.ptr<float>(), lidar2image.ptr<float>(), img_aug_matrix.ptr<float>(),
-              stream);
-  // core->free_excess_memory();
+  auto frame_dirs = collect_frame_dirs(data);
 
-  // Load image and lidar to host
-  auto images = load_images(data);
-  auto lidar_points = nv::Tensor::load(nv::format("%s/points.tensor", data), false);
-  
-  // warmup
-  auto bboxes =
-      core->forward((const unsigned char**)images.data(), lidar_points.ptr<nvtype::half>(), lidar_points.size(0), stream);
+  printf("Total frames: %zu\n", frame_dirs.size());
+  printf("Output dir: %s\n", output_dir);
 
-  // evaluate inference time
-  for (int i = 0; i < 5; ++i) {
-    core->forward((const unsigned char**)images.data(), lidar_points.ptr<nvtype::half>(), lidar_points.size(0), stream);
+  for (size_t iframe = 0; iframe < frame_dirs.size(); ++iframe) {
+    const std::string& frame_dir = frame_dirs[iframe];
+    std::string frame_name = basename_of_path(frame_dir);
+
+    printf("========================================\n");
+    printf("[%zu / %zu] Running %s\n", iframe + 1, frame_dirs.size(), frame_dir.c_str());
+
+    auto camera2lidar = nv::Tensor::load(
+        nv::format("%s/camera2lidar.tensor", frame_dir.c_str()), false);
+
+    auto camera_intrinsics = nv::Tensor::load(
+        nv::format("%s/camera_intrinsics.tensor", frame_dir.c_str()), false);
+
+    auto lidar2image = nv::Tensor::load(
+        nv::format("%s/lidar2image.tensor", frame_dir.c_str()), false);
+
+    auto img_aug_matrix = nv::Tensor::load(
+        nv::format("%s/img_aug_matrix.tensor", frame_dir.c_str()), false);
+
+    core->update(
+        camera2lidar.ptr<float>(),
+        camera_intrinsics.ptr<float>(),
+        lidar2image.ptr<float>(),
+        img_aug_matrix.ptr<float>(),
+        stream
+    );
+
+    auto images = load_images(frame_dir);
+
+    auto lidar_points = nv::Tensor::load(
+        nv::format("%s/points.tensor", frame_dir.c_str()), false);
+
+    auto bboxes = core->forward(
+        (const unsigned char**)images.data(),
+        lidar_points.ptr<nvtype::half>(),
+        lidar_points.size(0),
+        stream
+    );
+
+    std::string save_path;
+
+    if (is_frame_root(data)) {
+      save_path = nv::format("%s/%s.jpg", output_dir, frame_name.c_str());
+    } else {
+      save_path = nv::format("%s/cuda-bevfusion.jpg", output_dir);
+    }
+
+    visualize(bboxes, lidar_points, images, lidar2image, save_path, stream);
+
+    free_images(images);
   }
 
-  // visualize and save to jpg
-  visualize(bboxes, lidar_points, images, lidar2image, "build/cuda-bevfusion.jpg", stream);
-
-  // destroy memory
-  free_images(images);
   checkRuntime(cudaStreamDestroy(stream));
 
-  printf("[Warning]: If you got an inaccurate boundingbox result please turn on the layernormplugin plan. (main.cpp:207)\n");
+  printf("[Warning]: If you got an inaccurate boundingbox result please turn on the layernormplugin plan. (main.cpp)\n");
+
   return 0;
 }
+
