@@ -36,17 +36,22 @@ message(STATUS "spconv_lib = ${spconv_lib}")
 
 if("$ENV{SPCONV_CUDA_VERSION}" EQUAL "11.4")
   # For cuda 11.x
-  set(CMAKE_CXX_FLAGS_RELEASE "-std=c++14 -Wextra -Wall -Wno-missing-field-initializers -Wno-deprecated-declarations -O3 -DENABLE_TEXT_BACKEND_STB -Wno-unused-parameter")
-  set(CMAKE_CXX_FLAGS_DEBUG   "-std=c++14 -O0 -g -DENABLE_TEXT_BACKEND_STB")
+  set(CMAKE_CXX_FLAGS_RELEASE "-std=c++17 -Wextra -Wall -Wno-missing-field-initializers -Wno-deprecated-declarations -O3 -DENABLE_TEXT_BACKEND_STB -Wno-unused-parameter")
+  set(CMAKE_CXX_FLAGS_DEBUG   "-std=c++17 -O0 -g -DENABLE_TEXT_BACKEND_STB")
 else()
   # For cuda 12.x
   set(CMAKE_CXX_FLAGS_RELEASE "-std=c++17 -Wextra -Wall -Wno-missing-field-initializers -Wno-deprecated-declarations -O3 -DENABLE_TEXT_BACKEND_STB -Wno-unused-parameter")
   set(CMAKE_CXX_FLAGS_DEBUG   "-std=c++17 -O0 -g -DENABLE_TEXT_BACKEND_STB")
 endif()
 
-set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} 
+
+set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS}
+  -std=c++17
+  --expt-relaxed-constexpr
+  -gencode arch=compute_$ENV{CUDASM},code=sm_$ENV{CUDASM}
   -gencode arch=compute_$ENV{CUDASM},code=compute_$ENV{CUDASM}
 )
+
 
 include_directories(
   ${Protobuf_INCLUDE_DIRS}
