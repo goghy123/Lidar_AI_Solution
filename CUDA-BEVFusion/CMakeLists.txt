@@ -47,6 +47,7 @@ endif()
 
 set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS}
   -std=c++17
+  
   --expt-relaxed-constexpr
   -gencode arch=compute_$ENV{CUDASM},code=sm_$ENV{CUDASM}
   -gencode arch=compute_$ENV{CUDASM},code=compute_$ENV{CUDASM}
