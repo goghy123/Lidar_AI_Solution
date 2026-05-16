@@ -193,7 +193,7 @@ CUDA-BEVFusion 不直接读取 nuScenes 原始目录，需要先转换成与 exa
 python tool/tools_convert_nuscenes_mini.py \
   --dataroot ./nuscenesmini \
   --version v1.0-mini \
-  --out nuscenes-mini-frames \
+  --out nuscenesmini-frames \
   --max-samples 20 \
   --scene-index 0
 ```
@@ -207,7 +207,7 @@ for i in $(seq 0 9); do
     python tool/tools_convert_nuscenes_mini.py \
       --dataroot ./nuscenesmini \
       --version v1.0-mini \
-      --out nuscenes-mini-frames/scene-$i \
+      --out nuscenesmini-frames/scene-$i \
       --max-samples 999 \
       --scene-index $i
 done
@@ -232,7 +232,7 @@ bash tool/run.sh
 
 export DEBUG_MODEL=resnet50int8
 export DEBUG_PRECISION=int8
-export DEBUG_DATA=nuscenes-mini-frames
+export DEBUG_DATA=dataset/nuscenesmini-frames
 export DEBUG_OUTPUT_DIR=nuscenes-mini-outputs-maincpp
 bash tool/run.sh
 ```
@@ -244,12 +244,72 @@ for i in $(seq 0 9); do
     echo "Processing scene $i"
     export DEBUG_MODEL=resnet50int8
     export DEBUG_PRECISION=int8
-    export DEBUG_DATA=nuscenes-mini-frames/scene-$i
-    export DEBUG_OUTPUT_DIR=nuscenes-mini-outputs/scene-$i
+    export DEBUG_DATA=dataset/nuscenesmini-frames/scene-$i
+    export DEBUG_OUTPUT_DIR=outputs/scene-$i
 
     bash tool/run.sh
 
 done
+```
+
+#### 5. 将输出图片拼接成 GIF 或视频
+
+CUDA-BEVFusion 批量运行后，每一帧的可视化结果通常会保存为连续图片，例如：
+
+```bash
+outputs/scene-0/
+├── frame_000000.jpg
+├── frame_000001.jpg
+├── frame_000002.jpg
+└── ...
+```
+
+使用 tool/images_to_gif_or_video.py 将这些连续帧拼接成 GIF 动图或 MP4 视频。
+
+脚本默认参数可以在文件开头修改,不指定终端参数时，直接运行：
+
+``` BASH
+python tool/images_to_gif_or_video.py
+```
+
+也可以在终端指定输入目录、输出目录、输出类型和帧率：
+
+```BASH
+# 生成视频：
+python tool/images_to_gif_or_video.py \
+  --input-dir outputs/scene-0 \
+  --output-dir outputs/video \
+  --output-type video \
+  --output-name scene-0 \
+  --fps 7
+```
+
+```BASH
+# 生成GIF动图：
+python tool/images_to_gif_or_video.py \
+  --input-dir outputs/scene-0 \
+  --output-dir outputs/gif \
+  --output-type gif \
+  --output-name scene-0 \
+  --fps 7
+```
+
+```BASH
+# 批量将多个 scene 的输出结果转换为视频：
+for i in $(seq 0 9); do
+    echo "Making video for scene $i"
+    python tool/images_to_gif_or_video.py \
+      --input-dir outputs/scene-$i \
+      --output-dir outputs/videos \
+      --output-type video \
+      --output-name scene-$i \
+      --fps 7
+done
+```
+
+```BASH
+# 查看所有可用参数：
+python tool/images_to_gif_or_video.py --help
 ```
 
 ## Export onnx and PTQ

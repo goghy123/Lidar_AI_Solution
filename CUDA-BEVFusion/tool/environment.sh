@@ -55,12 +55,12 @@ export DEBUG_MODEL=${DEBUG_MODEL:-resnet50int8}
 export DEBUG_PRECISION=${DEBUG_PRECISION:-int8}
 
 # Single-frame input:
-# export DEBUG_DATA=nuscenes-mini-frames/frame_000000
+# export DEBUG_DATA=${DEBUG_DATA:-dataset/nuscenesmini-frames}
 
 # Multi-frame input:
-export DEBUG_DATA=${DEBUG_DATA:-nuscenes-mini-frames}
+export DEBUG_DATA=${DEBUG_DATA:-dataset/nuscenesmini-frames/scene-0}
 
-export DEBUG_OUTPUT_DIR=${DEBUG_OUTPUT_DIR:-nuscenes-mini-outputs}
+export DEBUG_OUTPUT_DIR=${DEBUG_OUTPUT_DIR:-outputs}
 
 export USE_Python=OFF
 
