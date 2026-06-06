@@ -14,4 +14,5 @@ __pycache__
 /src/onnx/*.h
 /outputs
 /dataset
-/.vscode
+__pycache__
+.vscode
