@@ -1,2 +1,16 @@
+/build/
+/data/nuscenes
+/data/nusc_tensor
+/data/prediction
+*.pyc
 __pycache__
-.vscode
+*.plan
+*.log
+/model
+/example-data
+/src/test
+/qat/onnx_int8
+/src/onnx/*.cpp
+/src/onnx/*.h
+/outputs
+/dataset
