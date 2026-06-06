@@ -30,8 +30,8 @@ set(arch ${CMAKE_HOST_SYSTEM_PROCESSOR})
 find_package(CUDA REQUIRED)
 find_package(Protobuf REQUIRED)
 
-set(spconv_include ../libraries/3DSparseConvolution/libspconv/include)
-set(spconv_lib ../libraries/3DSparseConvolution/libspconv/lib/${arch}_cuda$ENV{SPCONV_CUDA_VERSION})
+set(spconv_include libraries/3DSparseConvolution/libspconv/include)
+set(spconv_lib libraries/3DSparseConvolution/libspconv/lib/${arch}_cuda$ENV{SPCONV_CUDA_VERSION})
 message(STATUS "spconv_lib = ${spconv_lib}")
 
 if("$ENV{SPCONV_CUDA_VERSION}" EQUAL "11.4")
@@ -59,10 +59,10 @@ include_directories(
   $ENV{CUDA_Inc}
   $ENV{TensorRT_Inc}
   $ENV{Python_Inc}
-  ../dependencies/stb
-  ../dependencies/dlpack/include
-  ../dependencies/pybind11/include
-  ../libraries/cuOSD/src
+  dependencies/stb
+  dependencies/dlpack/include
+  dependencies/pybind11/include
+  libraries/cuOSD/src
   ${spconv_include}
   src/common
   src/
@@ -85,8 +85,8 @@ file(GLOB_RECURSE CORE_FILES
 )
 
 file(GLOB_RECURSE VISUALIZE_FILES 
-  ../libraries/cuOSD/src/*.cpp
-  ../libraries/cuOSD/src/*.cu
+  libraries/cuOSD/src/*.cpp
+  libraries/cuOSD/src/*.cu
   src/common/visualize.cu
 )
 
