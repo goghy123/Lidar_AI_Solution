@@ -110,6 +110,19 @@ if [ -f "tool/cudasm.sh" ]; then
     echo "Current CUDA SM: $cudasm"
 fi
 
-export CUDASM=$cudasm
+# export CUDASM=$cudasm
+
+# 对于4080super，指定 CUDASM
+export CUDASM=89
+
+# ==========================================================
+# ROS2 运行时需要能找到 libspconv.so
+# 原项目 CMake 编译时能链接到 libspconv.so，
+# 但 ros2 launch 运行时仍然依赖 LD_LIBRARY_PATH 查找动态库。
+# 这里根据当前项目路径添加 spconv 动态库目录。
+# ==========================================================
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+export LD_LIBRARY_PATH="${PROJECT_ROOT}/libraries/3DSparseConvolution/libspconv/lib/x86_64_cuda11.4:${LD_LIBRARY_PATH}"
+
 
 echo Configuration done!
