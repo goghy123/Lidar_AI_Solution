@@ -1,0 +1,69 @@
+bevfusion_dataset_node:
+  ros__parameters:
+    # -------------------------
+    # 路径参数：ROS2 启动时工作目录不固定，所以建议全部写绝对路径。
+    # 请把 /home/xxx 替换成你自己的 ros2_ws 路径。
+    # -------------------------
+    data_dir: "/home/goghy/Projects/ros2_ws/src/CUDA-BEVFuison-ROS2/dataset/nuscenesmini-frames/scene-0"
+    model_root: "/home/goghy/Projects/ros2_ws/src/CUDA-BEVFuison-ROS2/model"
+    output_dir: "/home/goghy/Projects/ros2_ws/src/CUDA-BEVFuison-ROS2/outputs/scene-0"
+
+    # -------------------------
+    # 模型参数
+    # -------------------------
+    model_name: "resnet50int8"
+    precision: "int8"
+    confidence_threshold: 0.12
+    sorted_bboxes: true
+    use_layernorm_plugin_plan: false
+    plugin_library: "libcustom_layernorm.so"
+
+    # -------------------------
+    # 数据集播放参数
+    # playback_mode:
+    #   timer     : 按 publish_rate_hz 固定频率处理一帧
+    #   immediate : 一帧处理完立即处理下一帧，用于快速跑完整个数据集
+    # -------------------------
+    playback_mode: "timer"
+    publish_rate_hz: 5.0
+    loop: true
+    start_frame_index: 0
+    max_frames: -1
+    start_delay_sec: 1.0
+
+    # -------------------------
+    # 第一阶段核心输出：发布原 outputs 风格的 RGB 可视化大图
+    # -------------------------
+    publish_visualization_image: true
+    visualization_image_topic: "/bevfusion/visualization/image"
+    visualization_image_frame_id: "bevfusion_debug"
+
+    # 可选：同时保存 jpg，方便和原 main.cpp 的 outputs 对比
+    save_visualization_image: false
+    jpeg_quality: 100
+
+    # -------------------------
+    # bbox 调试打印
+    # -------------------------
+    print_bbox_summary: true
+    print_top_k_bboxes: 5
+
+    # -------------------------
+    # 运行时参数
+    # validate_frame_files=true 可以尽早发现数据集缺文件
+    # skip_bad_frames=false 更适合调试，因为坏帧会立刻暴露出来
+    # -------------------------
+    enable_core_timer: true
+    validate_frame_files: true
+    skip_bad_frames: false
+
+    # -------------------------
+    # 第二阶段预留，当前代码只声明参数，不发布这些话题
+    # -------------------------
+    publish_detections: false
+    detections_topic: "/bevfusion/detections"
+    detections_frame_id: "lidar"
+
+    publish_markers: false
+    markers_topic: "/bevfusion/markers"
+    markers_frame_id: "lidar"
